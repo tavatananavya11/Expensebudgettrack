@@ -73,6 +73,36 @@ java -jar target\expense-budget-tracker-1.0.0.jar
 
 Then visit `http://localhost:8080`.
 
+## Run with Docker
+
+The repository-root Dockerfile is `./Dockerfile`. It builds the application with Maven and Java 21, then runs the packaged app on a Java 21 runtime. Docker builds run the Maven test suite as part of packaging.
+
+Build the image from the project root:
+
+```powershell
+docker build -t paisaplan .
+```
+
+Run it with a named Docker volume for the SQLite database:
+
+```powershell
+docker run --name paisaplan -p 8080:8080 -v paisaplan-data:/data paisaplan
+```
+
+Open `http://localhost:8080`. Stop the container with **Ctrl+C** (or `docker stop paisaplan`). To start the same container again, use `docker start -a paisaplan`. The named `paisaplan-data` volume keeps `/data/expense-tracker.db` across container restarts and replacement containers when you mount that same volume.
+
+To remove the container without deleting its saved database, run:
+
+```powershell
+docker rm paisaplan
+```
+
+Do not remove the `paisaplan-data` volume if you need its records. Docker volumes on a developer computer are local to that computer; they do not synchronize across phones. For a hosted service, attach a persistent disk or volume at `/data`, configure the service to use exactly one application instance with SQLite, and make sure the hosting provider retains that disk when redeploying. For multiple app instances or higher traffic, use a shared server database rather than SQLite.
+
+The container listens on port `8080` by default. Hosts that provide a `PORT` environment variable are supported automatically. If you map a different local port, for example `-p 8081:8080`, open `http://localhost:8081`.
+
+If Docker reports that it cannot connect to its engine, start Docker Desktop and wait for it to become ready, then retry the build.
+
 ## Database and privacy — important
 
 By default, SQLite stores data in `expense-tracker.db` in the directory where the application is started. The database file is created automatically and persists when the application stops. Back it up while the app is stopped by copying that file to a safe location.
