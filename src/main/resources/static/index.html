@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f6f8fc">
+    <title>PaisaPlan — Expense &amp; Budget Tracker</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js" defer></script>
+    <script src="/app.js" defer></script>
+</head>
+<body>
+<main id="auth-view" class="auth-view hidden">
+    <section class="auth-card">
+        <a class="brand brand-center" href="/" aria-label="PaisaPlan home">
+            <span class="brand-mark">₹</span>
+            <span>Paisa<span class="brand-light">Plan</span></span>
+        </a>
+        <p class="eyebrow">YOUR MONEY, IN FOCUS</p>
+        <h1 id="auth-title">Welcome back</h1>
+        <p id="auth-subtitle" class="muted">Sign in to see your monthly snapshot.</p>
+        <form id="auth-form" class="form-stack">
+            <label>Email address
+                <input id="auth-email" name="email" type="email" autocomplete="email" maxlength="254" placeholder="you@example.com" required>
+            </label>
+            <label>Password
+                <input id="auth-password" name="password" type="password" autocomplete="current-password" minlength="10" maxlength="72" placeholder="At least 10 characters" required>
+            </label>
+            <p id="auth-error" class="inline-error hidden" role="alert"></p>
+            <button id="auth-submit" class="button button-primary button-wide" type="submit">Sign in</button>
+        </form>
+        <p class="auth-switch"><span id="auth-switch-copy">New to PaisaPlan?</span>
+            <button id="auth-switch" class="text-button" type="button">Sign up</button>
+        </p>
+        <p class="privacy-note">Your financial records belong to your account and are private from other accounts.</p>
+    </section>
+</main>
+
+<div id="app-view" class="app-shell hidden">
+    <aside class="sidebar">
+        <a class="brand" href="#" aria-label="PaisaPlan dashboard">
+            <span class="brand-mark">₹</span>
+            <span>Paisa<span class="brand-light">Plan</span></span>
+        </a>
+        <div class="sidebar-label">WORKSPACE</div>
+        <a class="nav-item active" href="#dashboard" aria-current="page">
+            <span class="nav-icon" aria-hidden="true">▦</span> Overview
+        </a>
+        <a class="nav-item" href="#transactions">
+            <span class="nav-icon" aria-hidden="true">↕</span> Transactions
+        </a>
+        <div class="sidebar-bottom">
+            <div class="privacy-card">
+                <span class="privacy-icon" aria-hidden="true">◈</span>
+                <strong>Private by design</strong>
+                <span>Your records are tied to your signed-in account.</span>
+            </div>
+            <div class="account-row">
+                <div id="account-avatar" class="avatar">U</div>
+                <div class="account-copy">
+                    <strong id="account-email">Account</strong>
+                    <span>Personal workspace</span>
+                </div>
+                <button id="logout-button" class="icon-button logout-button" type="button" aria-label="Sign out and switch account" title="Sign out to switch accounts">
+                    <span aria-hidden="true">↪</span><span class="logout-label">Sign out</span>
+                </button>
+            </div>
+        </div>
+    </aside>
+
+    <section class="main-panel">
+        <header class="topbar">
+            <div>
+                <p class="eyebrow">PERSONAL FINANCE</p>
+                <h1>Overview</h1>
+            </div>
+            <div class="topbar-actions">
+                <label class="month-picker">
+                    <span aria-hidden="true">▦</span>
+                    <input id="month-picker" type="month" aria-label="Select report month">
+                </label>
+                <button id="add-transaction" class="button button-primary" type="button">
+                    <span aria-hidden="true">＋</span> Add transaction
+                </button>
+            </div>
+        </header>
+
+        <div id="notice" class="notice hidden" role="status" aria-live="polite"></div>
+        <div id="loading" class="loading-state">Loading your monthly overview…</div>
+
+        <div id="dashboard-content" class="dashboard-content hidden">
+            <section class="welcome-row">
+                <div>
+                    <h2 id="welcome-heading">Your month at a glance</h2>
+                    <p class="muted">A clear view of what came in and where it went.</p>
+                </div>
+                <span id="report-month-label" class="month-label"></span>
+            </section>
+
+            <section class="summary-grid" aria-label="Monthly financial summary">
+                <article class="summary-card income-card">
+                    <div class="card-topline"><span>Total income</span><span class="metric-icon income-icon">↗</span></div>
+                    <strong id="total-income" class="metric-value">₹0</strong>
+                    <span class="metric-caption">Money received this month</span>
+                </article>
+                <article class="summary-card expense-card">
+                    <div class="card-topline"><span>Total expenses</span><span class="metric-icon expense-icon">↘</span></div>
+                    <strong id="total-expenses" class="metric-value">₹0</strong>
+                    <span class="metric-caption">Money spent this month</span>
+                </article>
+                <article class="summary-card budget-card">
+                    <div class="card-topline"><span>Monthly budget</span><span class="metric-icon budget-icon">◎</span></div>
+                    <strong id="monthly-budget" class="metric-value">₹0</strong>
+                    <span class="metric-caption">Your spending plan</span>
+                </article>
+                <article class="summary-card remaining-card">
+                    <div class="card-topline"><span>Budget remaining</span><span class="metric-icon remaining-icon">◷</span></div>
+                    <strong id="remaining-budget" class="metric-value">₹0</strong>
+                    <span id="remaining-caption" class="metric-caption">Available for this month</span>
+                </article>
+                <article class="summary-card savings-card">
+                    <div class="card-topline"><span>Monthly savings</span><span class="metric-icon savings-icon">✦</span></div>
+                    <strong id="monthly-savings" class="metric-value">₹0</strong>
+                    <span class="metric-caption">Income minus expenses</span>
+                </article>
+            </section>
+
+            <section class="content-grid">
+                <article class="panel spending-panel">
+                    <div class="panel-heading">
+                        <div>
+                            <p class="eyebrow">SPENDING BREAKDOWN</p>
+                            <h2>By category</h2>
+                        </div>
+                        <span class="subtle-badge">Expenses</span>
+                    </div>
+                    <div id="chart-wrap" class="chart-wrap">
+                        <canvas id="category-chart" aria-label="Expense spending by category" role="img"></canvas>
+                        <p id="chart-empty" class="chart-empty hidden">Add expenses to see your category breakdown.</p>
+                        <p id="chart-unavailable" class="chart-empty hidden">The chart library could not load. Your totals are still available.</p>
+                    </div>
+                    <div id="category-legend" class="category-legend"></div>
+                </article>
+
+                <article class="panel budget-panel">
+                    <div class="panel-heading">
+                        <div>
+                            <p class="eyebrow">MONTHLY PLAN</p>
+                            <h2>Budget progress</h2>
+                        </div>
+                        <span class="budget-symbol">◉</span>
+                    </div>
+                    <div class="budget-amount-row">
+                        <div>
+                            <span class="muted">Spent so far</span>
+                            <strong id="budget-spent">₹0</strong>
+                        </div>
+                        <div class="budget-total">
+                            <span class="muted">Monthly limit</span>
+                            <strong id="budget-total">₹0</strong>
+                        </div>
+                    </div>
+                    <div class="progress-track"><div id="budget-progress" class="progress-fill"></div></div>
+                    <p id="budget-progress-label" class="progress-label">Set a monthly budget to track your progress.</p>
+                    <form id="budget-form" class="budget-form">
+                        <label for="budget-input">Set or update your budget</label>
+                        <div class="input-action-row">
+                            <div class="rupee-input"><span>₹</span><input id="budget-input" type="number" min="0.01" step="0.01" placeholder="e.g. 25000" required></div>
+                            <button class="button button-secondary" type="submit">Save</button>
+                        </div>
+                    </form>
+                </article>
+            </section>
+
+            <section id="transactions" class="panel transactions-panel">
+                <div class="panel-heading transaction-heading">
+                    <div>
+                        <p class="eyebrow">YOUR ACTIVITY</p>
+                        <h2>Recent transactions</h2>
+                    </div>
+                    <button id="add-transaction-secondary" class="button button-secondary button-small" type="button">＋ Add new</button>
+                </div>
+                <div class="table-scroll">
+                    <table>
+                        <thead>
+                        <tr><th scope="col">Transaction</th><th scope="col">Category</th><th scope="col">Date</th><th scope="col">Amount</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr>
+                        </thead>
+                        <tbody id="transaction-rows"></tbody>
+                    </table>
+                    <div id="transactions-empty" class="empty-state hidden">
+                        <span class="empty-icon">↕</span>
+                        <strong>No transactions for this month yet</strong>
+                        <span>Add an income or expense to start your monthly report.</span>
+                        <button id="empty-add-transaction" class="button button-primary button-small" type="button">Add your first transaction</button>
+                    </div>
+                </div>
+            </section>
+            <p class="page-footnote">All figures are shown in Indian Rupees (₹). Financial records are private to this account.</p>
+        </div>
+    </section>
+</div>
+
+<dialog id="transaction-dialog" class="transaction-dialog">
+    <form id="transaction-form" class="dialog-form">
+        <div class="dialog-heading">
+            <div>
+                <p class="eyebrow">TRANSACTION DETAILS</p>
+                <h2 id="dialog-title">Add transaction</h2>
+            </div>
+            <button id="close-dialog" class="icon-button close-button" type="button" aria-label="Close">×</button>
+        </div>
+        <label>Type
+            <select id="transaction-type" required>
+                <option value="EXPENSE">Expense</option>
+                <option value="INCOME">Income</option>
+            </select>
+        </label>
+        <label>Amount (₹)
+            <input id="transaction-amount" type="number" min="0.01" step="0.01" max="999999999999.99" placeholder="0.00" required>
+        </label>
+        <label>Category
+            <select id="transaction-category" required>
+                <option value="FOOD">Food</option>
+                <option value="RENT">Rent</option>
+                <option value="TRAVEL">Travel</option>
+                <option value="SHOPPING">Shopping</option>
+                <option value="EDUCATION">Education</option>
+                <option value="HEALTHCARE">Healthcare</option>
+                <option value="BILLS">Bills</option>
+                <option value="SALARY">Salary</option>
+                <option value="OTHER">Other</option>
+            </select>
+        </label>
+        <label>Description
+            <input id="transaction-description" type="text" maxlength="200" placeholder="What was this for?" required>
+        </label>
+        <label>Date
+            <input id="transaction-date" type="date" required>
+        </label>
+        <p id="transaction-error" class="inline-error hidden" role="alert"></p>
+        <div class="dialog-actions">
+            <button id="cancel-dialog" class="button button-secondary" type="button">Cancel</button>
+            <button id="save-transaction" class="button button-primary" type="submit">Save transaction</button>
+        </div>
+    </form>
+</dialog>
+</body>
+</html>
