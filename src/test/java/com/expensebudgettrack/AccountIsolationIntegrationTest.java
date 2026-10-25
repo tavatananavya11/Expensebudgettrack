@@ -16,6 +16,7 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.util.Locale;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -150,6 +151,62 @@ class AccountIsolationIntegrationTest {
                 .andExpect(jsonPath("$.monthlyBudget").value(9000.00));
     }
 
+    @Test
+    void duplicateEmailRegistrationIsCaseInsensitiveAndLoginDoesNotCreateAccounts() throws Exception {
+        String email = "duplicate-" + UUID.randomUUID() + "@example.com";
+        register(email);
+
+        mockMvc.perform(withCsrf(post("/api/auth/register"))
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(
+                                new Registration(email.toUpperCase(Locale.ROOT), PASSWORD))))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("An account with this email already exists"));
+
+        long accountsBeforeLogin = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM users", Long.class);
+        mockMvc.perform(withCsrf(post("/api/auth/login"))
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(
+                                new Registration("missing-" + UUID.randomUUID() + "@example.com", PASSWORD))))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value(
+                        "Email or password is incorrect. New users can choose Sign up."));
+        mockMvc.perform(withCsrf(post("/api/auth/login"))
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(new Registration(email, "Wrong-password-2026"))))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value(
+                        "Email or password is incorrect. New users can choose Sign up."));
+        assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM users", Long.class))
+                .isEqualTo(accountsBeforeLogin);
+
+        MockHttpSession session = login(email.toUpperCase(Locale.ROOT));
+        mockMvc.perform(get("/api/auth/me").session(session))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email").value(email));
+    }
+
+    @Test
+    void logoutThenLoginAgainRestoresTheOriginalAccountAndItsData() throws Exception {
+        String email = "relogin-" + UUID.randomUUID() + "@example.com";
+        YearMonth month = YearMonth.now();
+        register(email);
+        MockHttpSession session = login(email);
+        createTransaction(session, "EXPENSE", "875.00", "FOOD", "Lunch", month.atDay(5));
+        saveBudget(session, month, "2500.00");
+
+        mockMvc.perform(withCsrf(post("/api/auth/logout"), session))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/auth/me").session(session))
+                .andExpect(status().isUnauthorized());
+
+        MockHttpSession newSession = login(email);
+        mockMvc.perform(get("/api/dashboard").param("month", month.toString()).session(newSession))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalExpenses").value(875.00))
+                .andExpect(jsonPath("$.monthlyBudget").value(2500.00));
+    }
+
     private void register(String email) throws Exception {
         mockMvc.perform(withCsrf(post("/api/auth/register"))
                         .contentType("application/json")
@@ -163,11 +220,12 @@ class AccountIsolationIntegrationTest {
     }
 
     private MockHttpSession login(String email, MockHttpSession existingSession) throws Exception {
+        String normalizedEmail = email.toLowerCase(Locale.ROOT);
         MvcResult result = mockMvc.perform(withCsrf(post("/api/auth/login"), existingSession)
                         .contentType("application/json")
                         .content(objectMapper.writeValueAsString(new Registration(email, PASSWORD))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.email").value(email))
+                .andExpect(jsonPath("$.email").value(normalizedEmail))
                 .andReturn();
         return (MockHttpSession) result.getRequest().getSession(false);
     }

@@ -2,7 +2,7 @@ package com.expensebudgettrack.service;
 
 import com.expensebudgettrack.model.UserAccount;
 import com.expensebudgettrack.repository.UserRepository;
-import org.springframework.dao.DuplicateKeyException;
+import org.springframework.dao.DataAccessException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -22,8 +22,11 @@ public class AccountService {
         String normalizedEmail = email.trim().toLowerCase(Locale.ROOT);
         try {
             return userRepository.create(normalizedEmail, passwordEncoder.encode(password));
-        } catch (DuplicateKeyException exception) {
-            throw new EmailAlreadyRegisteredException();
+        } catch (DataAccessException exception) {
+            if (userRepository.findByEmail(normalizedEmail).isPresent()) {
+                throw new EmailAlreadyRegisteredException();
+            }
+            throw exception;
         }
     }
 

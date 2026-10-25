@@ -2,6 +2,7 @@ package com.expensebudgettrack.controller;
 
 import com.expensebudgettrack.service.AccountService;
 import com.expensebudgettrack.service.TransactionService;
+import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -44,5 +45,11 @@ public class ApiExceptionHandler {
     @ExceptionHandler(DataIntegrityViolationException.class)
     ResponseEntity<Map<String, String>> invalidStoredValue() {
         return ResponseEntity.badRequest().body(Map.of("message", "The submitted value is not valid"));
+    }
+
+    @ExceptionHandler(DataAccessException.class)
+    ResponseEntity<Map<String, String>> databaseUnavailable() {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(Map.of("message", "The database is temporarily unavailable. Your data was not saved. Please try again."));
     }
 }

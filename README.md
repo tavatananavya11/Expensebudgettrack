@@ -103,6 +103,27 @@ The container listens on port `8080` by default. Hosts that provide a `PORT` env
 
 If Docker reports that it cannot connect to its engine, start Docker Desktop and wait for it to become ready, then retry the build.
 
+## Keep the Render database persistent
+
+The deployed Docker image stores SQLite at `/data/expense-tracker.db` by default. This path is safe across Render restarts and deploys **only when a Render persistent disk is mounted at `/data`**. Render uses an ephemeral filesystem by default, so a SQLite file without a persistent disk can disappear when the service restarts or deploys. When the file disappears, a returning user can no longer log in because the stored account is gone; registration can then accept that email as a new account. The login endpoint does not create accounts.
+
+No `render.yaml` or Render disk configuration was present in this repository when it was inspected. Configure the existing Render web service in the dashboard:
+
+1. Before changing settings or deploying, check whether your existing records are still available. If they are, make a backup of the current database before any redeploy or disk mount change; a disk mounted at `/data` can hide the old container's `/data` directory. Do not overwrite a backup with a new empty database.
+2. Open your Render service's **Disks** settings and add a persistent disk mounted at **`/data`**. Render currently requires a paid web service for persistent disks. Keep this service to one instance when using SQLite.
+3. In the service's **Environment** settings, set:
+
+   | Variable | Value |
+   | --- | --- |
+   | `DATABASE_URL` | `jdbc:sqlite:/data/expense-tracker.db` |
+
+   The Docker image already sets this value, but setting it explicitly in Render makes the production database location visible and unambiguous. Keep the existing Dockerfile path `./Dockerfile`; Render supplies the `PORT` environment variable.
+4. Save the changes and deploy. After deployment, sign in with an existing account and verify its transactions and budget. Register a separate test account only if you need to verify isolation.
+
+Render's disk feature and mount-path requirements are documented at [Render persistent disks](https://render.com/docs/disks). Only files inside the mounted `/data` path persist. A Render disk is shared by this one service, not by unrelated Render services or local installations. Devices can see the same account data when they use this same hosted service and its persistent database.
+
+**If users' accounts already disappeared:** changing the database path cannot recreate them. Recovery is possible only if the old SQLite file still exists in the current service filesystem, or a backup/snapshot/export exists. Do not redeploy or attach a disk until you have checked whether the old database can still be backed up. If the service restarted without a disk and the old file is gone, the application source code cannot recover those records.
+
 ## Database and privacy — important
 
 By default, SQLite stores data in `expense-tracker.db` in the directory where the application is started. The database file is created automatically and persists when the application stops. Back it up while the app is stopped by copying that file to a safe location.
